@@ -3,82 +3,129 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Interpreter.Scanner
 {
     class Scanner
     {
-        SortedDictionary<string, BaseType> SymbolTable;
-        public Dictionary<string, int> InternalSymbolsForm { get; set; }
+        SortedDictionary<string, string> SymbolTable;
+        public Dictionary<string, string> InternalSymbolsForm { get; set; }
+        //public SortedDictionary<string, string> symTable;
+        public List<Tuple<string, string>> PIF = new List<Tuple<string, string>>();
+        private int symTableIndex = 1000, currentLine = 0, currentColumn = 0;
 
         public Scanner()
         {
-            SymbolTable = new SortedDictionary<string, BaseType>();
+            SymbolTable = new SortedDictionary<string, string>();
             //internalSymbolsForm = new Dictionary<string, int>();
             PopulateInternalSymbolForm();
         }
 
         private void PopulateInternalSymbolForm()
         {
-            InternalSymbolsForm = new Dictionary<string, int>
-            {                
-                {"{", 0 },
-                {"}", 1 },
-                {"id", 2 },
-                {";", 3 },
-                {"int", 4 },
-                {",", 5 },
-                {"=", 6 },
-                {"const", 7 }
-
+            InternalSymbolsForm = new Dictionary<string, string>
+            {
+                {"id", "0 "},
+                {"const", "1 "},
+                {"{","2 "},
+                {"}","3 "},
+                {"int","4 "},
+                {"float","5 "},
+                {"struct","6 "},
+                {"+","7 "},
+                {"-","8 "},
+                {"*","9 "},
+                {"/","10 "},
+                {"%","11 "},
+                {"<","12 "},
+                {"<=","13 "},
+                {">","14 " },
+                {">=","15 " },
+                {"==","16 " },
+                {"!=","17 " },
+                {",","18 " },
+                {"while","19 " },
+                {"(","20 " },
+                {")","21 " },
+                {"if","22 " },
+                {"else","23 " },
+                {"cin>>","24 " },
+                {"cout<<","25 " },
+                {";", "26 " },
+                {"=", "27 " }
             };
         }
-
-        private void AnalyzeStatement(string s, out StringBuilder pif)
+        private void CheckWhatItIs(string el)
         {
-            pif = new StringBuilder();
-            pif.Clear();
-            if (s.Split(' ')[0] == "int")//this is a declaration for integers
+            //identifier/constant
+            //const
+            if (int.TryParse(el, out var n) || float.TryParse(el, out var f)) // is a number
             {
-                pif.Append("4");
-                var varList = s.Substring(s.IndexOf(' ') + 1)
-                    .Replace(" ","")
-                    .Split(',').ToList(); // remove type decl and spaces between variables
-                foreach (var var in varList) // parse variables from this specific declaration
+                if (!SymbolTable.ContainsKey(el))
                 {
-                    //Console.WriteLine(var);
-                    pif.Append(" 2 5");
+                    SymbolTable.Add(el, symTableIndex.ToString());
+                    symTableIndex++;
                 }
-                pif = pif.Remove(pif.Length - 1, 1);
-                pif.Append("3");
-            } 
+                PIF.Add(new Tuple<string, string>("(" + el + ")" + InternalSymbolsForm["const"], SymbolTable[el]));
+                return;
+            }
+            //id
+            if (Char.IsLetter(el.FirstOrDefault()) && el.All(c => Char.IsLetterOrDigit(c)))
+            {
+                if (!SymbolTable.ContainsKey(el))
+                {
+                    SymbolTable.Add(el, symTableIndex.ToString());
+                    symTableIndex++;
+                }
+                PIF.Add(new Tuple<string, string>("(" + el + ")" + InternalSymbolsForm["id"], SymbolTable[el]));
+                return;
+            }
+            throw new Exception("There is an error at line " + currentLine + ", element " + currentColumn);
+        }
+        private string GetPif(String prog)
+        {
+            Console.WriteLine(prog);
+            currentColumn = 0;
+            var elements = prog.Split(' ').ToList();
+            elements.ForEach(el => {
+                if (InternalSymbolsForm.Keys.Any(k => k == el) && el != "const" && el != "id")
+                {
+                    PIF.Add(new Tuple<string, string>("(" + el + ")" + "  " + InternalSymbolsForm[el],null));
+                }
+                else
+                {
+                    CheckWhatItIs(el);
+                }
+                currentColumn++;
+            });
+            return null;
         }
 
-        public void ReadProgram(string filename, out StringBuilder pif, out SortedDictionary<string, BaseType> symTable)
+        public void ReadProgram(string filename)
         {
-            StringBuilder prog, partialPif;
-            pif = new StringBuilder();            
+            StringBuilder prog, partialPif = new StringBuilder();
+
             try
             {
-                prog = new StringBuilder(System.IO.File.ReadAllText(filename)).Replace(System.Environment.NewLine,"");               
+                prog = new StringBuilder(System.IO.File.ReadAllText(filename)).Replace(";", " ; ");
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.Message);
-                pif = null;
-                symTable = null;
+                PIF = null;
+                SymbolTable = null;
                 return;
             }
-            var stmtList = prog.ToString().Split(';').ToList();
-            stmtList.RemoveAt(stmtList.Count - 1);
-            foreach (var s in stmtList)
-            {                
-                AnalyzeStatement(s, out partialPif);
-                pif.Append(" ").Append(partialPif);
-            }                     
-
-            symTable = null;
+            //var text = Regex.Replace(prog.ToString(), @"\s+", " ");
+            var lines = prog.ToString().Split(new[] { Environment.NewLine },
+                StringSplitOptions.None).ToList();
+            //lines.ForEach(l => Console.WriteLine(l));
+            //var lines = Regex.Replace(prog.ToString(), @"\s+", " ").Split(';').ToList();
+            lines.ForEach(l => {GetPif(Regex.Replace(l, @"\s+", " ").Trim()); currentLine++; });
+            //lines.ForEach(l => Console.WriteLine(l.Trim()));
+            //GetPif(Regex.Replace(prog.ToString(), @"\s+", " "));
         }
 
     }

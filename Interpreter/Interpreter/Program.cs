@@ -11,15 +11,24 @@ namespace Interpreter
     {
         static void Main(string[] args)
         {
-            string filename = "D:/Projects/Interpreter/C-Like-Language-Interpreter/Interpreter/Interpreter/program.txt";
+            string filename = "C:/Work/LFTC/C-Like-Language-Interpreter/Interpreter/Interpreter/program.txt";
             StringBuilder pif = new StringBuilder();
-            SortedDictionary<string, BaseType> symbolTable = new SortedDictionary<string, BaseType>();
+            SortedDictionary<string, string> symbolTable = new SortedDictionary<string, string>();
             Scanner.Scanner s = new Scanner.Scanner();
 
             //s.InternalSymbolsForm.Keys.ToList().ForEach(k => Console.WriteLine(s.InternalSymbolsForm[k]));
-
-            s.ReadProgram(filename, out pif, out symbolTable);
-            Console.WriteLine(pif);
+            try
+            {
+                s.ReadProgram(filename);
+                s.PIF.ForEach(el => Console.WriteLine(el.Item1 + " : " + el.Item2));
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+            
+            
+            //Console.WriteLine(s.PIF);
             Console.Read();
         }
     }
